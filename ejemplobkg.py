@@ -137,7 +137,7 @@ for _ in range(n):
 # DATA #
 
 
-histD = ROOT.TH1F("hist data","Bck vs MC Example", 20, 105, 145)
+histD = ROOT.TH1F("hist data","Bck vs MC Example", 20, 105, 145)#20, 105 a 145
 histD.SetLineColor(ROOT.kRed)
 
 for i in listafotonlistoD[10]:
@@ -153,7 +153,7 @@ histD.SetStats(0)
 hist.Draw()
 histD.Draw("SAME") #SAME          
 hist.GetYaxis().SetRangeUser(0, 50000*r)             
-histD.GetYaxis().SetRangeUser(0, 50000*r)  
+histD.GetYaxis().SetRangeUser(0, 50000*r) # 50000*r 
 legend = ROOT.TLegend(0.7, 0.6, 0.9, 0.7)
 legend.AddEntry(hist, "Signal", "l")
 legend.AddEntry(histD, "Data D", "l")
@@ -165,13 +165,14 @@ canvasbkgej.SaveAs("backgroundexample.png")
 # AJUSTE POLINOMIO #
 
 # Definir la variable observable
-m = ROOT.RooRealVar("m", "Masa", 0, 300)
+m = ROOT.RooRealVar("m", "Masa", 10, 400)
+m.setRange("fitrange", 10, 400)
 
 # Definir los parámetros del polinomio de tercer orden (background)
-a0 = ROOT.RooRealVar("a0", "Constant", 0, -1000, 1000)
-a1 = ROOT.RooRealVar("a1", "Linear term", 0, -1000, 1000)
-a2 = ROOT.RooRealVar("a2", "Quadratic term", 0, -1000, 1000)
-a3 = ROOT.RooRealVar("a3", "Cubic term", 0, -1000, 1000)
+a0 = ROOT.RooRealVar("a0", "Constant", 200, 0, 1000)
+a1 = ROOT.RooRealVar("a1", "Linear term", -1, -10, 10)
+a2 = ROOT.RooRealVar("a2", "Quadratic term", 0.01, -0.1, 0.1)
+a3 = ROOT.RooRealVar("a3", "Cubic term", -0.0001, -0.01, 0.01)
 
 # Definir el polinomio de tercer orden (fondo)
 background = ROOT.RooPolynomial("background", "Background Polynomial", m, ROOT.RooArgList(a0, a1, a2, a3))
@@ -185,12 +186,17 @@ for value in listafotonlistoD[10]:
     data.add(ROOT.RooArgSet(m))  # Agregar el valor al conjunto de datos
 
 # Ajustar el modelo de polinomio a los datos
-background.fitTo(data)
+fit_result=background.fitTo(data, ROOT.RooFit.Range(10,400), ROOT.RooFit.Save())
+
+a0.setVal(fit_result.floatParsFinal().find("a0").getVal())
+a1.setVal(fit_result.floatParsFinal().find("a1").getVal())
+a2.setVal(fit_result.floatParsFinal().find("a2").getVal())
+a3.setVal(fit_result.floatParsFinal().find("a3").getVal())
 
 # Crear un marco para la variable y graficar los datos
-xframe = m.frame()
+xframe = m.frame(ROOT.RooFit.Range(10, 400))
 data.plotOn(xframe)            # Graficar los datos
-background.plotOn(xframe)      # Graficar el ajuste del polinomio
+background.plotOn(xframe, ROOT.RooFit.Range(10,400), ROOT.RooFit.NormRange("fitrange"))      # Graficar el ajuste del polinomio
 
 # Dibujar el gráfico
 canvasajuste = ROOT.TCanvas("canvasajuste")
@@ -198,7 +204,13 @@ xframe.Draw()
 canvasajuste.SaveAs("polynomial_fit.png")  # Guardar el resultado como imagen
 canvasajuste.Draw()
 
+# Verificar los valores finales de los parámetros
+print(f"a0 = {a0.getVal()}, a1 = {a1.getVal()}, a2 = {a2.getVal()}, a3 = {a3.getVal()}")
+
 
 ## INFORMACIÓN IMPORTANTE ##
 
+# a0 parte en el origen y no debería de hacerlo. ver el tema del rango de los datos. hay que decirle al computador que la funcion no parte en 0, o algo así.
+#quizas sea buena idea cortar los datos en masas para simular mejor.
+#quizas sea bueno cambiar donde se empieza a ver el a0
 
